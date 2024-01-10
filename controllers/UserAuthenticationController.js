@@ -6,13 +6,11 @@ const bcrypt = require('bcryptjs');
 //for password generate using enrypt.
 const validator = require('validator');
 const exceptionHandler = require('../exception/errorHandler');
-const userWallet = require('../models/UserWalletModel');
 
 const register = async (req, res) => {
   try{
     const {
-       firstname, lastname, username, email, phoneNumber,token
-    } = req.body;
+       firstname, lastname, username, email, phoneNumber,token} = req.body;
 
     //Creating a hash value for the password.
     const password = bcrypt.hashSync(req.body.password, bcrypt.genSaltSync(10));
@@ -30,9 +28,17 @@ const register = async (req, res) => {
     // }
 
     // Checking if the referral token is valid.
-    const newUser = new User({firstname, lastname, username, email, phoneNumber, password});
-    const wallet = new UserWallet({balance : 0, user : newUser});
-    newUser.wallet = wallet;
+    const newUser = new User({
+        firstname,
+        lastname,
+        username,
+        email,
+        phoneNumber,
+        password,
+        
+    });
+    const userWallet =  new UserWallet({ balance: 0, user: newUser._id });
+    newUser.wallet = userWallet._id;
 
     if(token !== undefined)
     {
@@ -47,6 +53,8 @@ const register = async (req, res) => {
 
         const refferedByUser = await User.findById(getTokenDetails.user);
         const refferedUserWallet = await UserWallet.findById(refferedByUser.wallet);
+        console.log(refferedByUser.wallet);
+
 
         refferedUserWallet.balance += 5000;
         refferedUserWallet.tokensUsed.push(getTokenDetails);
@@ -60,11 +68,11 @@ const register = async (req, res) => {
     
     //Saving the new user into database.
     const savedUser = await newUser.save();
-    wallet.save();
+    userWallet.save();
     res.status(201).json({ message: "The user has been registered successfully" });
   }
   catch(error){
-    exceptionHandler(error, res);
+    res.status(402).json({ message: error });
   }
 };
 

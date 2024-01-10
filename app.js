@@ -5,7 +5,7 @@ const app = express();
 const userRoutes = require('./routes/userRoutes');
 
 //defining the port.
-const PORT = process.env.PORT || 1244;
+const PORT = 1244;
 
 //Starting the app at the port, url : /localhost:1234/
 app.listen(PORT, console.log("Server has strated at PORT :" + PORT));

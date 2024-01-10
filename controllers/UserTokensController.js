@@ -6,14 +6,6 @@ const exceptionHandler = require('../exception/errorHandler');
 const crypto = require('crypto');
 const UserReferrals = require('../models/UserReferralsModel');
 
-const register = async (req, res) => {
-  try{
-  }
-  catch(error){
-    exceptionHandler(error, res);
-  }
-};
-
 //Controller method for login.
 const generateToken = async (req, res) => {
   try {
@@ -25,7 +17,7 @@ const generateToken = async (req, res) => {
     }
     
     //Get details of user with given userId
-    const findUser = await User.findOne({ _id : userId });
+    const findUser = await User.findOne(userId);
 
     //Creating a unique token using the crypto library.
     const uniqueToken = generateUniqueToken();
