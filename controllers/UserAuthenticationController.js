@@ -6,26 +6,25 @@ const bcrypt = require('bcryptjs');
 //for password generate using enrypt.
 const validator = require('validator');
 const exceptionHandler = require('../exception/errorHandler');
+const userTokenController = require('./UserTokensController');
 
-const register = async (req, res) => {
+exports.register = async (req, res) => {
   try{
     const {
-       firstname, lastname, username, email, phoneNumber,token} = req.body;
+       firstname, lastname, username, email, phoneNumber,tokenId} = req.body;
 
     //Creating a hash value for the password.
     const password = bcrypt.hashSync(req.body.password, bcrypt.genSaltSync(10));
     //Validate email format
     if (!validator.isEmail(email)) {
-      console.log("Incorrect email address");
       return res.status(400).json({ message: 'Invalid email address format' });
     }
     
-    // Validate phone number format
-    // if (validator.isMobilePhone(phoneNumber, { strictMode: false }) === false)
-    // {
-    //   console.log("Incorrect email address");
-    //   return res.status(400).json({ message: 'Invalid phone number format' });
-    // }
+    //Validate phone number format
+    if (!validator.isMobilePhone(phoneNumber))
+    {
+      return res.status(400).json({ message: 'Invalid phone number format' });
+    }
 
     // Checking if the referral token is valid.
     const newUser = new User({
@@ -35,49 +34,50 @@ const register = async (req, res) => {
         email,
         phoneNumber,
         password,
-        
     });
     const userWallet =  new UserWallet({ balance: 0, user: newUser._id });
     newUser.wallet = userWallet._id;
 
-    if(token !== undefined)
+    if(tokenId !== undefined)
     {
-      const tokenValidation = await checkIfValidToken(token);
+      const tokenValidation = await userTokenController.checkIfValidToken(tokenId);
       if(tokenValidation.validToken === false)
       {
         return res.status(400).json(tokenValidation.message);
       }
       else
       {
-        const getTokenDetails =   await UserReferrals.findById(token);
-
+        //Finding the token, user and user wallet for given tokenId
+        const getTokenDetails =   await UserReferrals.findById(tokenId);
         const refferedByUser = await User.findById(getTokenDetails.user);
         const refferedUserWallet = await UserWallet.findById(refferedByUser.wallet);
-        console.log(refferedByUser.wallet);
 
-
+        //Incrementing the user balance by 5000 and adding the token into the user wallet.
         refferedUserWallet.balance += 5000;
         refferedUserWallet.tokensUsed.push(getTokenDetails);
 
-        refferedUserWallet.save();
-        refferedByUser.save();
+        //Saving the changes to database.
+        await newUser.save();
+        await userWallet.save();
+        await refferedByUser.save();
+        await refferedUserWallet.save();
+        res.status(201).json({ message: "The user has been registered successfully and refferal has been activated" });
       }
     }
-
-    //Create the new user object.
-    
-    //Saving the new user into database.
-    const savedUser = await newUser.save();
-    userWallet.save();
-    res.status(201).json({ message: "The user has been registered successfully" });
+    else
+    {
+      await newUser.save();
+      await userWallet.save();
+      res.status(201).json({ message: "The user has been registered successfully" });
+    }
   }
   catch(error){
-    res.status(402).json({ message: error });
+    exceptionHandler(error, res);
   }
 };
 
 //Controller method for login.
-const login = async (req, res) => {
+exports.login = async (req, res) => {
   try {
     const { username, password } = req.body;
 
@@ -117,50 +117,3 @@ const login = async (req, res) => {
     exceptionHandler(error, res);
   }
 };
-
-async function checkIfValidToken(token)
-{
-  let result;
-  let validToken;
-  let message;
-  const getTokenDetails =   await UserReferrals.findById(token);
-
-  if(!getTokenDetails)
-  {
-    validToken = false;
-    message = 'Invalid token provided';
-  }
-  else
-  {
-    const millisecondsInOneDay = 24 * 60 * 60 * 1000; // 24 hours * 60 minutes * 60 seconds * 1000 milliseconds
-    if(getTokenDetails.isValid === false)
-    {
-      validToken = false;
-      message = 'The token is not valid anymore';
-    }
-    else if((Date.now() - getTokenDetails.timeIn)/millisecondsInOneDay >= 30)
-    {
-      validToken = false;
-      getTokenDetails.isValid = false;
-      await getTokenDetails.save();
-
-      message = 'The token has expired as it has passed 30 days of time period';
-    }
-    else
-    {
-      validToken = true;
-      const totalAttempts = getTokenDetails.attempts;
-      if(totalAttempts == 4)
-      {
-        getTokenDetails.attempts = 5;
-        getTokenDetails.isValid = false;
-      }
-
-      message = 'The token provided is working fine';
-    }
-  }
-
-  return {validToken, message};
-}
-
-module.exports = {register, login};
