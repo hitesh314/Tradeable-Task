@@ -1,4 +1,0 @@
-In this backend project I am going to implement a backend project for my assignment using Node.js language and Express framework on top of it.
-I will be using MySql database for it.
-
-We wil not be working with the views folder as this server is mainly backend only.
